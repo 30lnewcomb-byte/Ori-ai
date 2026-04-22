@@ -2,59 +2,115 @@ import streamlit as st
 import requests
 import os
 
-# Local now → Render later (same code works both ways)
 API_URL = os.getenv("ORI_API_URL", "http://localhost:8000/chat")
 
-st.set_page_config(page_title="Ori AI", layout="centered")
+st.set_page_config(page_title="Ori AI", layout="wide")
 
-st.title("🧠 Ori AI System (Phase 2)")
+# ---------------- CSS (ChatGPT-style feel) ----------------
+st.markdown("""
+<style>
 
-tab1, tab2 = st.tabs(["💬 Chat", "🔐 Backend Status"])
+.chat-container {
+    max-width: 800px;
+    margin: auto;
+    padding-bottom: 100px;
+}
 
-# ---------------- CHAT TAB ----------------
-with tab1:
+.user-bubble {
+    background-color: #2b2b2b;
+    color: white;
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin: 8px 0;
+    text-align: right;
+}
 
-    st.subheader("Chat with Ori")
+.ori-bubble {
+    background-color: #444654;
+    color: white;
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin: 8px 0;
+    text-align: left;
+}
 
-    if "history" not in st.session_state:
-        st.session_state.history = []
+.intent-tag {
+    font-size: 12px;
+    opacity: 0.6;
+    margin-top: 4px;
+}
 
-    user_input = st.text_input("Type your message")
+.title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
 
-    if st.button("Send"):
-        if user_input:
-            try:
-                res = requests.post(API_URL, json={"message": user_input})
-                data = res.json()
+</style>
+""", unsafe_allow_html=True)
 
-                reply = data.get("response", "No response")
-                intent = data.get("intent", "unknown")
+# ---------------- SESSION ----------------
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-            except:
-                reply = "⚠️ Backend not reachable"
-                intent = "error"
+# ---------------- HEADER ----------------
+st.markdown("<div class='title'>🧠 Ori AI</div>", unsafe_allow_html=True)
 
-            st.session_state.history.append({
-                "user": user_input,
-                "ori": reply,
-                "intent": intent
-            })
+# ---------------- CHAT DISPLAY ----------------
+st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
 
-    # Display chat history
-    for item in st.session_state.history:
-        st.markdown(f"**🧑 You:** {item['user']}")
-        st.markdown(f"**🤖 Ori:** {item['ori']}")
-        st.caption(f"🧠 Intent: {item['intent']}")
-        st.markdown("---")
+for msg in st.session_state.messages:
+    if msg["role"] == "user":
+        st.markdown(f"""
+        <div class='user-bubble'>
+            {msg["content"]}
+        </div>
+        """, unsafe_allow_html=True)
 
+    else:
+        st.markdown(f"""
+        <div class='ori-bubble'>
+            {msg["content"]}
+            <div class='intent-tag'>Intent: {msg.get("intent", "unknown")}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-# ---------------- BACKEND TAB ----------------
-with tab2:
+st.markdown("</div>", unsafe_allow_html=True)
 
-    st.subheader("Backend Status")
+# ---------------- INPUT ----------------
+user_input = st.text_input("Message Ori...", key="input")
+
+col1, col2 = st.columns([1, 5])
+
+with col1:
+    send = st.button("Send")
+
+# ---------------- SEND LOGIC ----------------
+if send and user_input:
+
+    # store user message
+    st.session_state.messages.append({
+        "role": "user",
+        "content": user_input
+    })
 
     try:
-        res = requests.get("http://localhost:8000/")
-        st.success(res.json())
+        res = requests.post(API_URL, json={"message": user_input})
+        data = res.json()
+
+        reply = data.get("response", "No response")
+        intent = data.get("intent", "unknown")
+
     except:
-        st.error("Backend not running")
+        reply = "⚠️ Backend not reachable"
+        intent = "error"
+
+    # store Ori response
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": reply,
+        "intent": intent
+    })
+
+    st.rerun()
