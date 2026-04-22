@@ -1,9 +1,10 @@
 from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-import math
+import time
 
-app = FastAPI(title="Ori Backend - Phase 5 Tool Plugins")
+app = FastAPI(title="Ori Backend - Phase 6 Streaming")
 
 # ---------------- CORS ----------------
 app.add_middleware(
@@ -19,90 +20,44 @@ class ChatRequest(BaseModel):
     message: str
 
 
-# =========================
-# 🧠 TOOL REGISTRY SYSTEM
-# =========================
-class Tool:
-    def __init__(self, name, trigger, func):
-        self.name = name
-        self.trigger = trigger
-        self.func = func
-
-
-# ---------------- TOOLS ----------------
-def math_tool(msg):
-    expr = msg.lower().replace("calculate", "").strip()
-    try:
-        return str(eval(expr))
-    except:
-        return "Math error"
-
-
-def sqrt_tool(msg):
-    try:
-        num = float(msg.lower().replace("square root", "").strip())
-        return str(math.sqrt(num))
-    except:
-        return "Invalid number"
-
-
-def echo_tool(msg):
-    return f"Echo tool activated: {msg}"
-
-
-# ---------------- REGISTER TOOLS ----------------
-TOOLS = [
-    Tool("math", lambda m: "calculate" in m or any(op in m for op in "+-*/"), math_tool),
-    Tool("sqrt", lambda m: "square root" in m, sqrt_tool),
-]
-
-
-# =========================
-# 🧠 ROUTER (PLUGIN BASED)
-# =========================
-def run_tools(message: str):
+# ---------------- TOOL + ROUTE (simple for now) ----------------
+def process(message: str):
     msg = message.lower()
 
-    for tool in TOOLS:
-        if tool.trigger(msg):
-            return {
-                "result": tool.func(message),
-                "tool": tool.name
-            }
+    if "hello" in msg:
+        return "Hey 👋 I'm Ori streaming now..."
 
-    return None
+    if "calculate" in msg:
+        try:
+            expr = msg.replace("calculate", "")
+            return f"The answer is {eval(expr)}"
+        except:
+            return "Math error"
 
-
-# =========================
-# 🧠 NORMAL CHAT HANDLER
-# =========================
-def chat_handler(msg: str):
-    return f"General chat mode: {msg}"
+    return f"I received: {message}"
 
 
 # =========================
-# 🧠 MAIN ENDPOINT
+# 🧠 STREAM GENERATOR
+# =========================
+def stream_response(text: str):
+    for char in text:
+        yield char
+        time.sleep(0.02)  # simulate streaming delay
+
+
+# =========================
+# 🧠 STREAM ENDPOINT
 # =========================
 @app.post("/chat")
 def chat(req: ChatRequest):
 
-    tool_result = run_tools(req.message)
+    response = process(req.message)
 
-    if tool_result:
-        return {
-            "response": tool_result["result"],
-            "route": "tool",
-            "tool": tool_result["tool"],
-            "phase": 5
-        }
-
-    response = chat_handler(req.message)
-
-    return {
-        "response": response,
-        "route": "chat",
-        "phase": 5
-    }
+    return StreamingResponse(
+        stream_response(response),
+        media_type="text/plain"
+    )
 
 
 # ---------------- HEALTH ----------------
@@ -110,6 +65,6 @@ def chat(req: ChatRequest):
 def home():
     return {
         "status": "Ori backend running",
-        "phase": 5,
-        "system": "plugin tools enabled"
+        "phase": 6,
+        "system": "streaming enabled"
     }
