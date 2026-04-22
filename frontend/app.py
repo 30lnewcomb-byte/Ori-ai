@@ -1,43 +1,57 @@
 import streamlit as st
 import requests
+import os
 
-API_URL = "http://localhost:8000/chat"  # later change for Render
+# Local now → Render later (same code works both ways)
+API_URL = os.getenv("ORI_API_URL", "http://localhost:8000/chat")
 
 st.set_page_config(page_title="Ori AI", layout="centered")
 
-tab1, tab2 = st.tabs(["💬 Chat", "🔐 API Panel"])
+st.title("🧠 Ori AI System (Phase 2)")
+
+tab1, tab2 = st.tabs(["💬 Chat", "🔐 Backend Status"])
 
 # ---------------- CHAT TAB ----------------
 with tab1:
-    st.title("Ori Chat")
 
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
+    st.subheader("Chat with Ori")
 
-    user_input = st.text_input("Type a message")
+    if "history" not in st.session_state:
+        st.session_state.history = []
+
+    user_input = st.text_input("Type your message")
 
     if st.button("Send"):
         if user_input:
-            # send to backend
-            res = requests.post(API_URL, json={"message": user_input})
-            reply = res.json()["response"]
+            try:
+                res = requests.post(API_URL, json={"message": user_input})
+                data = res.json()
 
-            st.session_state.chat_history.append(("You", user_input))
-            st.session_state.chat_history.append(("Ori", reply))
+                reply = data.get("response", "No response")
+                intent = data.get("intent", "unknown")
 
-    # display chat
-    for sender, msg in st.session_state.chat_history:
-        if sender == "You":
-            st.markdown(f"**🧑 You:** {msg}")
-        else:
-            st.markdown(f"**🤖 Ori:** {msg}")
+            except:
+                reply = "⚠️ Backend not reachable"
+                intent = "error"
+
+            st.session_state.history.append({
+                "user": user_input,
+                "ori": reply,
+                "intent": intent
+            })
+
+    # Display chat history
+    for item in st.session_state.history:
+        st.markdown(f"**🧑 You:** {item['user']}")
+        st.markdown(f"**🤖 Ori:** {item['ori']}")
+        st.caption(f"🧠 Intent: {item['intent']}")
+        st.markdown("---")
 
 
-# ---------------- API TAB ----------------
+# ---------------- BACKEND TAB ----------------
 with tab2:
-    st.title("API Panel")
 
-    st.write("Backend Status Check:")
+    st.subheader("Backend Status")
 
     try:
         res = requests.get("http://localhost:8000/")
