@@ -1,68 +1,97 @@
-import streamlit as st
-import requests
-import os
+from fastapi import FastAPI
+from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+import math
 
-API_URL = os.getenv("ORI_API_URL", "https://ori-ai.onrender.com/chat")
+app = FastAPI(title="Ori Backend - Phase 4 Tools")
 
-st.set_page_config(page_title="Ori AI", layout="wide")
-
-# ---------------- SESSION STATE ----------------
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# ---------------- HEADER ----------------
-st.markdown(
-    "<h2 style='text-align:center;'>🧠 Ori AI</h2>",
-    unsafe_allow_html=True
+# ---------------- CORS ----------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-st.caption("Phase 3 Router System • Streamlit UI → Render Brain")
+# ---------------- REQUEST ----------------
+class ChatRequest(BaseModel):
+    message: str
 
-# ---------------- CHAT DISPLAY ----------------
-for msg in st.session_state.messages:
 
-    if msg["role"] == "user":
-        with st.chat_message("user"):
-            st.markdown(msg["content"])
+# ---------------- ROUTER ----------------
+def route_message(msg: str):
+    msg = msg.lower()
 
-    else:
-        with st.chat_message("assistant"):
-            st.markdown(msg["content"])
-            st.caption(
-                f"Route: {msg.get('route', 'unknown')} | Phase: {msg.get('phase', '?')}"
-            )
+    if any(x in msg for x in ["hello", "hi", "hey"]):
+        return "greeting"
 
-# ---------------- INPUT ----------------
-user_input = st.chat_input("Message Ori...")
+    if "calculate" in msg or any(op in msg for op in ["+", "-", "*", "/"]):
+        return "tool_math"
 
-if user_input:
+    if "square root" in msg:
+        return "tool_sqrt"
 
-    # show user message instantly
-    st.session_state.messages.append({
-        "role": "user",
-        "content": user_input
-    })
+    if "who are you" in msg:
+        return "identity"
 
-    # call backend
+    return "chat"
+
+
+# ---------------- TOOLS ----------------
+def tool_math(msg: str):
     try:
-        res = requests.post(API_URL, json={"message": user_input})
-        data = res.json()
+        expr = msg.lower().replace("calculate", "").strip()
+        return str(eval(expr))
+    except:
+        return "Math error"
 
-        reply = data.get("response", "No response from Ori")
-        route = data.get("route", "unknown")
-        phase = data.get("phase", 3)
+def tool_sqrt(msg: str):
+    try:
+        num = float(msg.lower().replace("square root", "").strip())
+        return str(math.sqrt(num))
+    except:
+        return "Invalid number"
 
-    except Exception as e:
-        reply = "⚠️ Backend not reachable"
-        route = "error"
-        phase = 3
 
-    # store assistant response
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": reply,
+# ---------------- RESPONSE SYSTEM ----------------
+def handle(route: str, msg: str):
+
+    if route == "greeting":
+        return "Hey 👋 I'm Ori (Phase 4 Tools active)."
+
+    if route == "identity":
+        return "I'm Ori — now with tool execution system enabled."
+
+    if route == "tool_math":
+        return tool_math(msg)
+
+    if route == "tool_sqrt":
+        return tool_sqrt(msg)
+
+    return f"I handled this in chat mode: {msg}"
+
+
+# ---------------- MAIN ENDPOINT ----------------
+@app.post("/chat")
+def chat(req: ChatRequest):
+
+    route = route_message(req.message)
+    response = handle(route, req.message)
+
+    return {
+        "response": response,
         "route": route,
-        "phase": phase
-    })
+        "phase": 4,
+        "tool_mode": route.startswith("tool")
+    }
 
-    st.rerun()
+
+# ---------------- HEALTH ----------------
+@app.get("/")
+def home():
+    return {
+        "status": "Ori backend running",
+        "phase": 4,
+        "system": "tools enabled"
+    }
