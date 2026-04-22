@@ -6,18 +6,21 @@ API_URL = os.getenv("ORI_API_URL", "https://ori-ai.onrender.com/chat")
 
 st.set_page_config(page_title="Ori AI", layout="wide")
 
-# ---------------- SESSION ----------------
+# ---------------- SESSION STATE ----------------
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ---------------- TITLE ----------------
+# ---------------- HEADER ----------------
 st.markdown(
     "<h2 style='text-align:center;'>🧠 Ori AI</h2>",
     unsafe_allow_html=True
 )
 
+st.caption("Phase 3 Router System • Streamlit UI → Render Brain")
+
 # ---------------- CHAT DISPLAY ----------------
 for msg in st.session_state.messages:
+
     if msg["role"] == "user":
         with st.chat_message("user"):
             st.markdown(msg["content"])
@@ -25,14 +28,16 @@ for msg in st.session_state.messages:
     else:
         with st.chat_message("assistant"):
             st.markdown(msg["content"])
-            st.caption(f"Intent: {msg.get('intent', 'unknown')}")
+            st.caption(
+                f"Route: {msg.get('route', 'unknown')} | Phase: {msg.get('phase', '?')}"
+            )
 
 # ---------------- INPUT ----------------
 user_input = st.chat_input("Message Ori...")
 
 if user_input:
 
-    # show user message immediately
+    # show user message instantly
     st.session_state.messages.append({
         "role": "user",
         "content": user_input
@@ -43,18 +48,21 @@ if user_input:
         res = requests.post(API_URL, json={"message": user_input})
         data = res.json()
 
-        reply = data.get("response", "No response")
-        intent = data.get("intent", "unknown")
+        reply = data.get("response", "No response from Ori")
+        route = data.get("route", "unknown")
+        phase = data.get("phase", 3)
 
-    except:
+    except Exception as e:
         reply = "⚠️ Backend not reachable"
-        intent = "error"
+        route = "error"
+        phase = 3
 
-    # store AI response
+    # store assistant response
     st.session_state.messages.append({
         "role": "assistant",
         "content": reply,
-        "intent": intent
+        "route": route,
+        "phase": phase
     })
 
     st.rerun()
