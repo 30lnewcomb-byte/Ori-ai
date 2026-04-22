@@ -2,86 +2,104 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Ori Backend - Phase 2")
+app = FastAPI(title="Ori Backend - Phase 3 Router")
 
 # ---------------- CORS ----------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten later in Phase 24
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ---------------- REQUEST MODEL ----------------
+# ---------------- REQUEST ----------------
 class ChatRequest(BaseModel):
     message: str
 
 
-# ---------------- PHASE 2 INTENT BRAIN ----------------
-def detect_intent(message: str):
+# ---------------- ROUTER BRAIN ----------------
+def route_message(message: str):
     msg = message.lower().strip()
 
-    # greeting
-    if any(word in msg for word in ["hello", "hi", "hey", "yo"]):
+    # ROUTE: GREETING
+    if any(w in msg for w in ["hello", "hi", "hey"]):
         return "greeting"
 
-    # help
+    # ROUTE: MATH / TOOL
+    if any(w in msg for w in ["calculate", "+", "-", "*", "/"]):
+        return "tool_math"
+
+    # ROUTE: IDENTITY
+    if "who are you" in msg or "what are you" in msg:
+        return "identity"
+
+    # ROUTE: HELP
     if "help" in msg:
         return "help"
 
-    # identity
-    if "what are you" in msg or "who are you" in msg:
-        return "identity"
-
-    # basic math trigger
-    if any(word in msg for word in ["calculate", "solve", "+", "-", "*", "/"]):
-        return "math"
-
-    # default
-    return "general"
+    # ROUTE: DEFAULT CHAT
+    return "chat"
 
 
-# ---------------- RESPONSE ENGINE ----------------
-def generate_response(intent, message):
-
-    if intent == "greeting":
-        return "Hey 👋 I'm Ori. I'm starting to understand you better now."
-
-    if intent == "help":
-        return "I'm still early in development, but I can already understand your intent."
-
-    if intent == "identity":
-        return "I'm Ori — your modular AI system being built step by step."
-
-    if intent == "math":
-        try:
-            expr = message.lower().replace("calculate", "").strip()
-            return str(eval(expr))
-        except:
-            return "I couldn't safely calculate that."
-
-    return f"I understood your message as general input: '{message}'. I'm learning how to handle this better."
+# ---------------- RESPONSE SYSTEMS ----------------
+def handle_greeting():
+    return "Hey 👋 I'm Ori. Now I'm running a router brain (Phase 3)."
 
 
-# ---------------- MAIN CHAT ENDPOINT ----------------
+def handle_identity():
+    return "I'm Ori — a modular AI system with routing intelligence now active."
+
+
+def handle_help():
+    return "I can now route messages into different systems (chat, tools, logic)."
+
+
+def handle_math(message):
+    try:
+        expr = message.lower().replace("calculate", "").strip()
+        return str(eval(expr))
+    except:
+        return "I couldn't safely calculate that."
+
+
+def handle_chat(message):
+    return f"I routed this into general chat mode: '{message}'. I'm getting smarter."
+
+
+# ---------------- MAIN ENDPOINT ----------------
 @app.post("/chat")
 def chat(req: ChatRequest):
 
-    intent = detect_intent(req.message)
-    response = generate_response(intent, req.message)
+    route = route_message(req.message)
+
+    if route == "greeting":
+        response = handle_greeting()
+
+    elif route == "identity":
+        response = handle_identity()
+
+    elif route == "help":
+        response = handle_help()
+
+    elif route == "tool_math":
+        response = handle_math(req.message)
+
+    else:
+        response = handle_chat(req.message)
 
     return {
         "response": response,
-        "intent": intent,
-        "phase": 2
+        "route": route,
+        "phase": 3
     }
 
 
-# ---------------- HEALTH CHECK ----------------
+# ---------------- HEALTH ----------------
 @app.get("/")
 def home():
     return {
         "status": "Ori backend running",
-        "phase": 2
+        "phase": 3,
+        "system": "router enabled"
     }
