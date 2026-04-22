@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+import math
 
-app = FastAPI(title="Ori Backend - Phase 3 Router")
+app = FastAPI(title="Ori Backend - Phase 5 Tool Plugins")
 
 # ---------------- CORS ----------------
 app.add_middleware(
@@ -18,80 +19,89 @@ class ChatRequest(BaseModel):
     message: str
 
 
-# ---------------- ROUTER BRAIN ----------------
-def route_message(message: str):
-    msg = message.lower().strip()
-
-    # ROUTE: GREETING
-    if any(w in msg for w in ["hello", "hi", "hey"]):
-        return "greeting"
-
-    # ROUTE: MATH / TOOL
-    if any(w in msg for w in ["calculate", "+", "-", "*", "/"]):
-        return "tool_math"
-
-    # ROUTE: IDENTITY
-    if "who are you" in msg or "what are you" in msg:
-        return "identity"
-
-    # ROUTE: HELP
-    if "help" in msg:
-        return "help"
-
-    # ROUTE: DEFAULT CHAT
-    return "chat"
+# =========================
+# 🧠 TOOL REGISTRY SYSTEM
+# =========================
+class Tool:
+    def __init__(self, name, trigger, func):
+        self.name = name
+        self.trigger = trigger
+        self.func = func
 
 
-# ---------------- RESPONSE SYSTEMS ----------------
-def handle_greeting():
-    return "Hey 👋 I'm Ori. Now I'm running a router brain (Phase 3)."
-
-
-def handle_identity():
-    return "I'm Ori — a modular AI system with routing intelligence now active."
-
-
-def handle_help():
-    return "I can now route messages into different systems (chat, tools, logic)."
-
-
-def handle_math(message):
+# ---------------- TOOLS ----------------
+def math_tool(msg):
+    expr = msg.lower().replace("calculate", "").strip()
     try:
-        expr = message.lower().replace("calculate", "").strip()
         return str(eval(expr))
     except:
-        return "I couldn't safely calculate that."
+        return "Math error"
 
 
-def handle_chat(message):
-    return f"I routed this into general chat mode: '{message}'. I'm getting smarter."
+def sqrt_tool(msg):
+    try:
+        num = float(msg.lower().replace("square root", "").strip())
+        return str(math.sqrt(num))
+    except:
+        return "Invalid number"
 
 
-# ---------------- MAIN ENDPOINT ----------------
+def echo_tool(msg):
+    return f"Echo tool activated: {msg}"
+
+
+# ---------------- REGISTER TOOLS ----------------
+TOOLS = [
+    Tool("math", lambda m: "calculate" in m or any(op in m for op in "+-*/"), math_tool),
+    Tool("sqrt", lambda m: "square root" in m, sqrt_tool),
+]
+
+
+# =========================
+# 🧠 ROUTER (PLUGIN BASED)
+# =========================
+def run_tools(message: str):
+    msg = message.lower()
+
+    for tool in TOOLS:
+        if tool.trigger(msg):
+            return {
+                "result": tool.func(message),
+                "tool": tool.name
+            }
+
+    return None
+
+
+# =========================
+# 🧠 NORMAL CHAT HANDLER
+# =========================
+def chat_handler(msg: str):
+    return f"General chat mode: {msg}"
+
+
+# =========================
+# 🧠 MAIN ENDPOINT
+# =========================
 @app.post("/chat")
 def chat(req: ChatRequest):
 
-    route = route_message(req.message)
+    tool_result = run_tools(req.message)
 
-    if route == "greeting":
-        response = handle_greeting()
+    if tool_result:
+        return {
+            "response": tool_result["result"],
+            "route": "tool",
+            "tool": tool_result["tool"],
+            "phase": 5
+        }
 
-    elif route == "identity":
-        response = handle_identity()
-
-    elif route == "help":
-        response = handle_help()
-
-    elif route == "tool_math":
-        response = handle_math(req.message)
-
-    else:
-        response = handle_chat(req.message)
+    response = chat_handler(req.message)
 
     return {
         "response": response,
-        "route": route,
-        "phase": 3
+        "route": "chat",
+        "phase": 5
     }
 
 
@@ -100,6 +110,6 @@ def chat(req: ChatRequest):
 def home():
     return {
         "status": "Ori backend running",
-        "phase": 3,
-        "system": "router enabled"
+        "phase": 5,
+        "system": "plugin tools enabled"
     }
