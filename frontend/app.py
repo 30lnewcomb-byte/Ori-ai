@@ -2,99 +2,43 @@ import streamlit as st
 import requests
 import os
 
-API_URL = os.getenv("ORI_API_URL", "https://ori-ai.onrender.com/")
+API_URL = os.getenv("ORI_API_URL", "https://ori-ai.onrender.com/chat")
 
 st.set_page_config(page_title="Ori AI", layout="wide")
-
-# ---------------- CSS (ChatGPT-style feel) ----------------
-st.markdown("""
-<style>
-
-.chat-container {
-    max-width: 800px;
-    margin: auto;
-    padding-bottom: 100px;
-}
-
-.user-bubble {
-    background-color: #2b2b2b;
-    color: white;
-    padding: 12px 16px;
-    border-radius: 12px;
-    margin: 8px 0;
-    text-align: right;
-}
-
-.ori-bubble {
-    background-color: #444654;
-    color: white;
-    padding: 12px 16px;
-    border-radius: 12px;
-    margin: 8px 0;
-    text-align: left;
-}
-
-.intent-tag {
-    font-size: 12px;
-    opacity: 0.6;
-    margin-top: 4px;
-}
-
-.title {
-    text-align: center;
-    font-size: 28px;
-    font-weight: 600;
-    margin-bottom: 20px;
-}
-
-</style>
-""", unsafe_allow_html=True)
 
 # ---------------- SESSION ----------------
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ---------------- HEADER ----------------
-st.markdown("<div class='title'>🧠 Ori AI</div>", unsafe_allow_html=True)
+# ---------------- TITLE ----------------
+st.markdown(
+    "<h2 style='text-align:center;'>🧠 Ori AI</h2>",
+    unsafe_allow_html=True
+)
 
 # ---------------- CHAT DISPLAY ----------------
-st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
-
 for msg in st.session_state.messages:
     if msg["role"] == "user":
-        st.markdown(f"""
-        <div class='user-bubble'>
-            {msg["content"]}
-        </div>
-        """, unsafe_allow_html=True)
+        with st.chat_message("user"):
+            st.markdown(msg["content"])
 
     else:
-        st.markdown(f"""
-        <div class='ori-bubble'>
-            {msg["content"]}
-            <div class='intent-tag'>Intent: {msg.get("intent", "unknown")}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-st.markdown("</div>", unsafe_allow_html=True)
+        with st.chat_message("assistant"):
+            st.markdown(msg["content"])
+            st.caption(f"Intent: {msg.get('intent', 'unknown')}")
 
 # ---------------- INPUT ----------------
-user_input = st.text_input("Message Ori...", key="input")
+user_input = st.chat_input("Message Ori...")
 
-col1, col2 = st.columns([1, 5])
+if user_input:
 
-with col1:
-    send = st.button("Send")
-
-# ---------------- SEND LOGIC ----------------
-if send and user_input:
-
-    # store user message
+    # show user message immediately
     st.session_state.messages.append({
         "role": "user",
         "content": user_input
     })
 
+    # call backend
     try:
         res = requests.post(API_URL, json={"message": user_input})
         data = res.json()
@@ -106,7 +50,7 @@ if send and user_input:
         reply = "⚠️ Backend not reachable"
         intent = "error"
 
-    # store Ori response
+    # store AI response
     st.session_state.messages.append({
         "role": "assistant",
         "content": reply,
