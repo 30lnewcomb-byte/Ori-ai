@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import os
 
-API_URL = os.getenv("ORI_API_URL", "http://localhost:8000/chat")
+API_URL = os.getenv("ORI_API_URL", "https://ori-ai.onrender.com/")
 
 st.set_page_config(page_title="Ori AI", layout="wide")
 
