@@ -7,7 +7,7 @@ app = FastAPI(title="Ori Backend - Phase 2")
 # ---------------- CORS ----------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # lock later in Phase 24
+    allow_origins=["*"],  # tighten later in Phase 24
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -18,50 +18,63 @@ class ChatRequest(BaseModel):
     message: str
 
 
-# ---------------- PHASE 2: INTENT BRAIN ----------------
+# ---------------- PHASE 2 INTENT BRAIN ----------------
 def detect_intent(message: str):
-    msg = message.lower()
+    msg = message.lower().strip()
 
-    # Greeting intent
-    if any(word in msg for word in ["hello", "hi", "hey"]):
+    # greeting
+    if any(word in msg for word in ["hello", "hi", "hey", "yo"]):
         return "greeting"
 
-    # Help intent
+    # help
     if "help" in msg:
         return "help"
 
-    # Identity intent
+    # identity
     if "what are you" in msg or "who are you" in msg:
         return "identity"
 
-    # Default
+    # basic math trigger
+    if any(word in msg for word in ["calculate", "solve", "+", "-", "*", "/"]):
+        return "math"
+
+    # default
     return "general"
+
+
+# ---------------- RESPONSE ENGINE ----------------
+def generate_response(intent, message):
+
+    if intent == "greeting":
+        return "Hey 👋 I'm Ori. I'm starting to understand you better now."
+
+    if intent == "help":
+        return "I'm still early in development, but I can already understand your intent."
+
+    if intent == "identity":
+        return "I'm Ori — your modular AI system being built step by step."
+
+    if intent == "math":
+        try:
+            expr = message.lower().replace("calculate", "").strip()
+            return str(eval(expr))
+        except:
+            return "I couldn't safely calculate that."
+
+    return f"I understood your message as general input: '{message}'. I'm learning how to handle this better."
 
 
 # ---------------- MAIN CHAT ENDPOINT ----------------
 @app.post("/chat")
 def chat(req: ChatRequest):
-    message = req.message
-    intent = detect_intent(message)
 
-    if intent == "greeting":
-        response = "Hey 👋 I'm Ori. I'm starting to understand you better now."
-
-    elif intent == "help":
-        response = "I'm still early in development, but I can already understand what you're trying to say."
-
-    elif intent == "identity":
-        response = "I'm Ori — your modular AI system being built step by step."
-
-    elif intent == "general":
-        response = f"I understood your message as general input: '{message}'. I'm learning how to handle this better."
-
-    else:
-        response = "Something unexpected happened in my brain layer."
+    intent = detect_intent(req.message)
+    response = generate_response(intent, req.message)
 
     return {
         "response": response,
-        "intent": intent
+        "intent": intent,
+        "phase": 2
     }
 
 
